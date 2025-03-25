@@ -11,6 +11,7 @@ function AppointmentForm() {
   });
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -20,19 +21,49 @@ function AppointmentForm() {
     }));
   };
 
+  const validateForm = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.visitorEmail)) {
+      setErrorMessage("Please enter a valid email address.");
+      return false;
+    }
+    if (!formData.firstName || !formData.date || !formData.allocatedTime) {
+      setErrorMessage("First Name, Date, and Allocated Time are required.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setSuccessMessage("");
+    setErrorMessage("");
+
+    if (!validateForm()) {
+      setLoading(false);
+      return;
+    }
 
     try {
       await axios.post("http://localhost:3001/appointment/create", formData, {
         headers: { "Content-Type": "application/json" },
       });
-      setSuccessMessage(` Appointment for ${formData.firstName} ${formData.lastName} scheduled successfully! Email sent to ${formData.visitorEmail}.`);
+      setSuccessMessage(
+        `Appointment for ${formData.firstName} ${formData.lastName} scheduled successfully! Email sent to ${formData.visitorEmail}.`
+      );
+      // Reset form after success
+      setFormData({
+        firstName: "",
+        lastName: "",
+        date: "",
+        allocatedTime: "",
+        visitorEmail: "",
+      });
     } catch (error) {
       console.error("Error:", error.response?.data || error.message);
-      alert("Failed to process request. Please try again.");
+      const errorMsg = error.response?.data?.message || "Failed to process request. Please try again.";
+      setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -47,7 +78,8 @@ function AppointmentForm() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
-            {[{ label: "First Name", name: "firstName" },
+            {[
+              { label: "First Name", name: "firstName" },
               { label: "Last Name", name: "lastName" },
               { label: "Date", name: "date", type: "date" },
               { label: "Allocated Time", name: "allocatedTime", type: "time" },
@@ -85,12 +117,19 @@ function AppointmentForm() {
             onMouseOver={(e) => !loading && (e.target.style.transform = "translateY(-2px)")}
             onMouseOut={(e) => !loading && (e.target.style.transform = "translateY(0)")}
           >
-            {loading ? "Processing..." : "Send to Email"}
+            {loading ? "Processing..." : "Schedule Appointment"}
           </button>
         </form>
 
         {successMessage && (
-          <p style={{ textAlign: "center", marginTop: "1.5rem", color: "green", fontWeight: "bold" }}>{successMessage}</p>
+          <p style={{ textAlign: "center", marginTop: "1.5rem", color: "#28a745", fontWeight: "bold", background: "#e6ffe6", padding: "10px", borderRadius: "5px" }}>
+            {successMessage}
+          </p>
+        )}
+        {errorMessage && (
+          <p style={{ textAlign: "center", marginTop: "1.5rem", color: "#dc3545", fontWeight: "bold", background: "#ffe6e6", padding: "10px", borderRadius: "5px" }}>
+            {errorMessage}
+          </p>
         )}
       </div>
     </div>

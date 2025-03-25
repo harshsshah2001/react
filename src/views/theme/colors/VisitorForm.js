@@ -9,29 +9,26 @@ const VisitorForm = () => {
     lastName: "",
     date: "",
     allocatedTime: "",
-    email: "", // Added email field
-    nationalId: "",
+    visitorEmail: "",
+    national_id: "",
     photo: null,
-    mobile: "",
-    personalDetails: "",
+    mobile_number: "",
+    personal_details: "",
     note: "",
   });
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    // Extract and format allocatedTime from 'time' query parameter
     const rawTime = searchParams.get("time") || "";
     let formattedTime = "";
     if (rawTime) {
-      // Handle formats like "10:00 AM" or "10:00:00"
       const timeParts = rawTime.split(" ");
       if (timeParts.length > 1) {
-        // Handle "HH:MM AM/PM"
-        formattedTime = timeParts[0]; // Take "10:00" from "10:00 AM"
+        formattedTime = timeParts[0]; // e.g., "10:00" from "10:00 AM"
       } else {
-        // Handle "HH:MM:SS" or "HH:MM"
-        formattedTime = rawTime.split(":").slice(0, 2).join(":"); // Take "10:00" from "10:00:00"
+        formattedTime = rawTime.split(":").slice(0, 2).join(":"); // e.g., "10:00" from "10:00:00"
       }
     }
 
@@ -41,7 +38,7 @@ const VisitorForm = () => {
       lastName: searchParams.get("lastName") || "",
       date: searchParams.get("date") || "",
       allocatedTime: formattedTime,
-      email: searchParams.get("email") || "", // Pre-fill email from query parameter
+      visitorEmail: searchParams.get("email") || "",
     }));
   }, [searchParams]);
 
@@ -51,27 +48,38 @@ const VisitorForm = () => {
   };
 
   const handleFileChange = (e) => {
-    setFormData((prev) => ({ ...prev, photo: e.target.files[0] }));
+    setFormData((prev) => ({ ...prev, photo: e.target.files ? e.target.files[0] : null }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setSuccessMessage("");
+    setErrorMessage("");
 
     const formDataToSend = new FormData();
-    Object.keys(formData).forEach((key) => {
-      formDataToSend.append(key, formData[key]);
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== null) {
+        formDataToSend.append(key, value);
+      }
     });
 
     try {
-      await axios.post("http://localhost:3000/visitor", formDataToSend, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setSuccessMessage(`Visitor details for ${formData.firstName} ${formData.lastName} submitted successfully!`);
+      const response = await axios.post(
+        "http://localhost:3001/appointment/create",
+        formDataToSend,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      console.log("Server response:", response.data);
+      setSuccessMessage(
+        `Appointment details for ${formData.firstName} ${formData.lastName} updated successfully!`
+      );
     } catch (error) {
-      console.error("Error submitting visitor details:", error);
-      alert("Failed to process request. Please try again.");
+      console.error("Error submitting appointment details:", error);
+      const errorMsg = error.response?.data?.message || "Failed to process request. Please try again.";
+      setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -81,7 +89,7 @@ const VisitorForm = () => {
     <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", background: "white" }}>
       <div style={{ background: "white", padding: "2rem", borderRadius: "15px", boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)", width: "100%", maxWidth: "600px" }}>
         <h1 style={{ textAlign: "center", color: "#333", marginBottom: "2rem", fontSize: "2rem", background: "linear-gradient(to right, #667eea, #764ba2)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
-          Schedule an Appointment
+          Complete Your Appointment Details
         </h1>
 
         <form onSubmit={handleSubmit}>
@@ -91,11 +99,11 @@ const VisitorForm = () => {
               { label: "Last Name", name: "lastName", disabled: true },
               { label: "Date", name: "date", type: "date", disabled: true },
               { label: "Allocated Time", name: "allocatedTime", type: "time", disabled: true },
-              { label: "Email", name: "email", type: "email", disabled: true }, // Added email field
-              { label: "National ID", name: "nationalId", type: "text" },
+              { label: "Email", name: "visitorEmail", type: "email", disabled: true },
+              { label: "National ID", name: "national_id", type: "text" },
               { label: "Photo", name: "photo", type: "file", onChange: handleFileChange },
-              { label: "Mobile Number", name: "mobile", type: "text" },
-              { label: "Personal Details", name: "personalDetails", type: "textarea" },
+              { label: "Mobile Number", name: "mobile_number", type: "text" },
+              { label: "Personal Details", name: "personal_details", type: "textarea" },
               { label: "Note", name: "note", type: "textarea" },
             ].map(({ label, name, type = "text", disabled = false, onChange = handleChange }) => (
               <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -107,7 +115,7 @@ const VisitorForm = () => {
                     onChange={onChange}
                     disabled={disabled}
                     required={!disabled}
-                    rows="3"
+                    rows={3}
                     style={{ flex: 1, padding: "12px 15px", border: "2px solid #eee", borderRadius: "8px", fontSize: "1rem", background: "#f8f9fa" }}
                   />
                 ) : type === "file" ? (
@@ -116,6 +124,7 @@ const VisitorForm = () => {
                     name={name}
                     onChange={onChange}
                     required={!disabled}
+                    accept="image/jpeg,image/png"
                     style={{ flex: 1, padding: "12px 15px", border: "2px solid #eee", borderRadius: "8px", fontSize: "1rem", background: "#f8f9fa" }}
                   />
                 ) : (
@@ -157,6 +166,9 @@ const VisitorForm = () => {
 
         {successMessage && (
           <p style={{ textAlign: "center", marginTop: "1.5rem", color: "green", fontWeight: "bold" }}>{successMessage}</p>
+        )}
+        {errorMessage && (
+          <p style={{ textAlign: "center", marginTop: "1.5rem", color: "red", fontWeight: "bold" }}>{errorMessage}</p>
         )}
       </div>
     </div>
