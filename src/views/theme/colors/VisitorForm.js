@@ -11,7 +11,7 @@ const VisitorForm = () => {
     allocatedTime: "",
     visitorEmail: "",
     national_id: "",
-    photo: null,
+    photo: null, // Plain null, no TypeScript type
     mobile_number: "",
     personal_details: "",
     note: "",
@@ -74,7 +74,7 @@ const VisitorForm = () => {
       );
       console.log("Server response:", response.data);
       setSuccessMessage(
-        `Appointment details for ${formData.firstName} ${formData.lastName} updated successfully!`
+        `Appointment for ${formData.firstName} ${formData.lastName} submitted successfully!`
       );
     } catch (error) {
       console.error("Error submitting appointment details:", error);
@@ -89,7 +89,7 @@ const VisitorForm = () => {
     <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", background: "white" }}>
       <div style={{ background: "white", padding: "2rem", borderRadius: "15px", boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)", width: "100%", maxWidth: "600px" }}>
         <h1 style={{ textAlign: "center", color: "#333", marginBottom: "2rem", fontSize: "2rem", background: "linear-gradient(to right, #667eea, #764ba2)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
-          Complete Your Appointment Details
+          Schedule an Appointment
         </h1>
 
         <form onSubmit={handleSubmit}>
