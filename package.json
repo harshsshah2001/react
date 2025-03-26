@@ -16,7 +16,8 @@
     "build": "vite build",
     "lint": "eslint",
     "serve": "vite preview",
-    "start": "vite --port 3000"
+    "start": "vite --host 192.168.3.75",
+    "start:public": "HOST=0.0.0.0 PORT=3000 react-scripts start"
   },
   "dependencies": {
     "@coreui/chartjs": "^4.1.0",

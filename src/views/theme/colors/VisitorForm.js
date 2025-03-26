@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 
@@ -11,14 +11,18 @@ const VisitorForm = () => {
     allocatedTime: "",
     visitorEmail: "",
     national_id: "",
-    photo: null, // Plain null, no TypeScript type
+    photo: null,
     mobile_number: "",
     personal_details: "",
     note: "",
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false); // Toggle photo options UI
+  const fileInputRef = useRef(null); // Ref for file input (gallery)
+  const cameraInputRef = useRef(null); // Ref for camera input
 
   useEffect(() => {
     const rawTime = searchParams.get("time") || "";
@@ -26,9 +30,9 @@ const VisitorForm = () => {
     if (rawTime) {
       const timeParts = rawTime.split(" ");
       if (timeParts.length > 1) {
-        formattedTime = timeParts[0]; // e.g., "10:00" from "10:00 AM"
+        formattedTime = timeParts[0];
       } else {
-        formattedTime = rawTime.split(":").slice(0, 2).join(":"); // e.g., "10:00" from "10:00:00"
+        formattedTime = rawTime.split(":").slice(0, 2).join(":");
       }
     }
 
@@ -42,17 +46,95 @@ const VisitorForm = () => {
     }));
   }, [searchParams]);
 
+  const validateField = (name, value) => {
+    let error = "";
+
+    switch (name) {
+      case "firstName":
+      case "lastName":
+        if (value && !value.match(/^[a-zA-Z\s]{2,}$/)) {
+          error = `${name === "firstName" ? "First" : "Last"} name must be at least 2 characters and contain only letters`;
+        }
+        break;
+      case "visitorEmail":
+        if (value && !value.match(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/)) {
+          error = "Please enter a valid email address";
+        }
+        break;
+      case "national_id":
+        if (value && !value.match(/^[a-zA-Z0-9]{4,}$/)) {
+          error = "National ID must be at least 4 characters (letters and numbers allowed)";
+        }
+        break;
+      case "mobile_number":
+        if (value && !value.match(/^\d+$/)) {
+          error = "Mobile number must contain only digits";
+        }
+        break;
+      case "date":
+        if (value) {
+          const selectedDate = new Date(value);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (selectedDate < today) {
+            error = "Date must be today or later";
+          }
+        }
+        break;
+      case "personal_details":
+      case "note":
+        if (value && value.length < 2) {
+          error = `${name.replace("_", " ")} must be at least 2 characters`;
+        }
+        break;
+      case "photo":
+        if (value && !value.type.match("image/(jpeg|png)")) {
+          error = "Please upload a JPEG or PNG image";
+        }
+        break;
+      default:
+        break;
+    }
+    return error;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    const error = validateField(name, value);
+    setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   const handleFileChange = (e) => {
-    setFormData((prev) => ({ ...prev, photo: e.target.files ? e.target.files[0] : null }));
+    const file = e.target.files ? e.target.files[0] : null;
+    setFormData((prev) => ({ ...prev, photo: file }));
+    const error = validateField("photo", file);
+    setErrors((prev) => ({ ...prev, photo: error }));
+    setShowPhotoOptions(false); // Hide options after selection
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      const error = validateField(key, value);
+      if (error) newErrors[key] = error;
+    });
+    ["firstName", "lastName", "date", "allocatedTime", "visitorEmail"].forEach((key) => {
+      if (!formData[key]) newErrors[key] = `${key.replace("_", " ")} is required`;
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      setErrorMessage("Please fix all errors before submitting");
+      return;
+    }
+
     setLoading(true);
     setSuccessMessage("");
     setErrorMessage("");
@@ -66,7 +148,7 @@ const VisitorForm = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:3001/appointment/create",
+        "http://192.168.3.75:3001/appointment/create",
         formDataToSend,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -76,6 +158,19 @@ const VisitorForm = () => {
       setSuccessMessage(
         `Appointment for ${formData.firstName} ${formData.lastName} submitted successfully!`
       );
+      setFormData({
+        firstName: "",
+        lastName: "",
+        date: "",
+        allocatedTime: "",
+        visitorEmail: "",
+        national_id: "",
+        photo: null,
+        mobile_number: "",
+        personal_details: "",
+        note: "",
+      });
+      setErrors({});
     } catch (error) {
       console.error("Error submitting appointment details:", error);
       const errorMsg = error.response?.data?.message || "Failed to process request. Please try again.";
@@ -83,6 +178,18 @@ const VisitorForm = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePhotoUploadClick = () => {
+    setShowPhotoOptions(true); // Show options when clicking "Choose File"
+  };
+
+  const handleChooseFromGallery = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleTakePhoto = () => {
+    cameraInputRef.current.click();
   };
 
   return (
@@ -101,45 +208,139 @@ const VisitorForm = () => {
               { label: "Allocated Time", name: "allocatedTime", type: "time", disabled: true },
               { label: "Email", name: "visitorEmail", type: "email", disabled: true },
               { label: "National ID", name: "national_id", type: "text" },
-              { label: "Photo", name: "photo", type: "file", onChange: handleFileChange },
               { label: "Mobile Number", name: "mobile_number", type: "text" },
               { label: "Personal Details", name: "personal_details", type: "textarea" },
               { label: "Note", name: "note", type: "textarea" },
             ].map(({ label, name, type = "text", disabled = false, onChange = handleChange }) => (
-              <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#333", width: "40%" }}>{label}</label>
-                {type === "textarea" ? (
-                  <textarea
-                    name={name}
-                    value={formData[name]}
-                    onChange={onChange}
-                    disabled={disabled}
-                    required={!disabled}
-                    rows={3}
-                    style={{ flex: 1, padding: "12px 15px", border: "2px solid #eee", borderRadius: "8px", fontSize: "1rem", background: "#f8f9fa" }}
-                  />
-                ) : type === "file" ? (
-                  <input
-                    type="file"
-                    name={name}
-                    onChange={onChange}
-                    required={!disabled}
-                    accept="image/jpeg,image/png"
-                    style={{ flex: 1, padding: "12px 15px", border: "2px solid #eee", borderRadius: "8px", fontSize: "1rem", background: "#f8f9fa" }}
-                  />
-                ) : (
-                  <input
-                    type={type}
-                    name={name}
-                    value={formData[name]}
-                    onChange={onChange}
-                    disabled={disabled}
-                    required={!disabled}
-                    style={{ flex: 1, padding: "12px 15px", border: "2px solid #eee", borderRadius: "8px", fontSize: "1rem", background: "#f8f9fa" }}
-                  />
+              <div key={name} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#333", width: "40%" }}>{label}</label>
+                  {type === "textarea" ? (
+                    <textarea
+                      name={name}
+                      value={formData[name]}
+                      onChange={onChange}
+                      disabled={disabled}
+                      required={!disabled}
+                      rows={3}
+                      style={{
+                        flex: 1,
+                        padding: "12px 15px",
+                        border: "2px solid",
+                        borderColor: errors[name] ? "red" : "#eee",
+                        borderRadius: "8px",
+                        fontSize: "1rem",
+                        background: "#f8f9fa",
+                      }}
+                    />
+                  ) : (
+                    <input
+                      type={type}
+                      name={name}
+                      value={formData[name]}
+                      onChange={onChange}
+                      disabled={disabled}
+                      required={!disabled}
+                      style={{
+                        flex: 1,
+                        padding: "12px 15px",
+                        border: "2px solid",
+                        borderColor: errors[name] ? "red" : "#eee",
+                        borderRadius: "8px",
+                        fontSize: "1rem",
+                        background: "#f8f9fa",
+                      }}
+                    />
+                  )}
+                </div>
+                {errors[name] && (
+                  <span style={{ color: "red", fontSize: "0.8rem", marginLeft: "40%" }}>{errors[name]}</span>
                 )}
               </div>
             ))}
+
+            {/* Custom Photo Upload Section */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#333", width: "40%" }}>Photo</label>
+                <div style={{ flex: 1 }}>
+                  <button
+                    type="button"
+                    onClick={handlePhotoUploadClick}
+                    style={{
+                      padding: "12px 15px",
+                      border: "2px solid",
+                      borderColor: errors.photo ? "red" : "#eee",
+                      borderRadius: "8px",
+                      fontSize: "1rem",
+                      background: "#f8f9fa",
+                      cursor: "pointer",
+                      width: "100%",
+                      textAlign: "left",
+                    }}
+                  >
+                    Choose File
+                  </button>
+                  {showPhotoOptions && (
+                    <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}>
+                      <button
+                        type="button"
+                        onClick={handleChooseFromGallery}
+                        style={{
+                          padding: "8px 12px",
+                          background: "#667eea",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Choose File
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTakePhoto}
+                        style={{
+                          padding: "8px 12px",
+                          background: "#764ba2",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Camera
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    name="photoFromFile"
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    style={{ display: "none" }} // Hidden input for gallery
+                  />
+                  <input
+                    type="file"
+                    ref={cameraInputRef}
+                    name="photoFromCamera"
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    capture="environment" // Rear camera by default
+                    style={{ display: "none" }} // Hidden input for camera
+                  />
+                </div>
+              </div>
+              {errors.photo && (
+                <span style={{ color: "red", fontSize: "0.8rem", marginLeft: "40%" }}>{errors.photo}</span>
+              )}
+              {formData.photo && (
+                <span style={{ fontSize: "0.9rem", marginLeft: "40%", color: "#666" }}>
+                  Selected: {formData.photo.name}
+                </span>
+              )}
+            </div>
           </div>
 
           <button

@@ -35,7 +35,7 @@ const App = () => {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    axios.get("http://localhost:3000/users/message")
+    axios.get("http://192.168.3.75/users/message")
       .then((response) => setMessage(response.data.message))
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
@@ -56,7 +56,7 @@ const App = () => {
 
 
         <Routes>
-          
+
           <Route exact path="/login" name="Login Page" element={<Login />} />
           <Route exact path="/register" name="Register Page" element={<Register />} />
           <Route exact path="/404" name="Page 404" element={<Page404 />} />

@@ -16,11 +16,10 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Extract query parameters from URL on mount
   useEffect(() => {
     const parseQueryParams = () => {
-      const hash = window.location.hash; // e.g., '#/theme/colors/VisitorForm?email=...&time=...&date=...'
-      const queryString = hash.split('?')[1]; // Get part after '?'
+      const hash = window.location.hash;
+      const queryString = hash.split('?')[1];
       if (!queryString) return;
 
       const params = new URLSearchParams(queryString);
@@ -37,7 +36,7 @@ function App() {
     };
 
     parseQueryParams();
-  }, []); // Empty dependency array to run once on mount
+  }, []);
 
   const validateField = (name, value) => {
     let error = '';
@@ -65,6 +64,26 @@ function App() {
         }
         break;
       case 'allocationTime':
+        if (value && formData.date) {
+          const selectedDate = new Date(formData.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          selectedDate.setHours(0, 0, 0, 0);
+
+          if (selectedDate.getTime() === today.getTime()) {
+            const [hours, minutes] = value.split(':').map(Number);
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+
+            if (
+              hours < currentHours ||
+              (hours === currentHours && minutes <= currentMinutes)
+            ) {
+              error = 'Allocation time cannot be in the past for today';
+            }
+          }
+        }
         break;
       case 'date':
         if (value) {
@@ -88,6 +107,12 @@ function App() {
 
     const error = validateField(name, value);
     setErrors((prev) => ({ ...prev, [name]: error }));
+
+    // Revalidate allocationTime when date changes
+    if (name === 'date' && formData.allocationTime) {
+      const timeError = validateField('allocationTime', formData.allocationTime);
+      setErrors((prev) => ({ ...prev, allocationTime: timeError }));
+    }
   };
 
   const validateForm = () => {
@@ -121,7 +146,7 @@ function App() {
     console.log('Sending Data:', formattedData);
 
     try {
-      const response = await axios.post('http://localhost:3001/visitors', formattedData, {
+      const response = await axios.post('http://192.168.3.75:3001/visitors', formattedData, {
         headers: { 'Content-Type': 'application/json' },
       });
 
@@ -190,8 +215,8 @@ function App() {
               { label: 'Phone Number', name: 'phone' },
               { label: 'National ID', name: 'nationalId' },
               { label: 'Email ID', name: 'email' },
-              { label: 'Allocation Time', name: 'allocationTime', type: 'time' },
               { label: 'Date', name: 'date', type: 'date' },
+              { label: 'Allocation Time', name: 'allocationTime', type: 'time' },
             ].map(({ label, name, type = 'text' }) => (
               <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div

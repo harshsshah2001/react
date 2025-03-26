@@ -9,9 +9,63 @@ function AppointmentForm() {
     allocatedTime: "",
     visitorEmail: "",
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  const validateField = (name, value) => {
+    let error = '';
+
+    switch (name) {
+      case 'firstName':
+      case 'lastName':
+        if (value && !value.match(/^[a-zA-Z\s]{2,}$/)) {
+          error = `${name === 'firstName' ? 'First' : 'Last'} name must be at least 2 characters and contain only letters`;
+        }
+        break;
+      case 'visitorEmail':
+        if (value && !value.match(/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/)) {
+          error = 'Please enter a valid email address';
+        }
+        break;
+      case 'allocatedTime':
+        if (value && formData.date) {
+          const selectedDate = new Date(formData.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          selectedDate.setHours(0, 0, 0, 0);
+
+          if (selectedDate.getTime() === today.getTime()) {
+            const [hours, minutes] = value.split(':').map(Number);
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+
+            if (
+              hours < currentHours ||
+              (hours === currentHours && minutes <= currentMinutes)
+            ) {
+              error = 'Allocation time cannot be in the past for today';
+            }
+          }
+        }
+        break;
+      case 'date':
+        if (value) {
+          const selectedDate = new Date(value);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (selectedDate < today) {
+            error = 'Date must be today or later';
+          }
+        }
+        break;
+      default:
+        break;
+    }
+    return error;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -19,19 +73,25 @@ function AppointmentForm() {
       ...prev,
       [name]: value,
     }));
+
+    const error = validateField(name, value);
+    setErrors((prev) => ({ ...prev, [name]: error }));
+
+    // Revalidate allocatedTime when date changes
+    if (name === 'date' && formData.allocatedTime) {
+      const timeError = validateField('allocatedTime', formData.allocatedTime);
+      setErrors((prev) => ({ ...prev, allocatedTime: timeError }));
+    }
   };
 
   const validateForm = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.visitorEmail)) {
-      setErrorMessage("Please enter a valid email address.");
-      return false;
-    }
-    if (!formData.firstName || !formData.date || !formData.allocatedTime) {
-      setErrorMessage("First Name, Date, and Allocated Time are required.");
-      return false;
-    }
-    return true;
+    const newErrors = {};
+    Object.keys(formData).forEach((key) => {
+      const error = validateField(key, formData[key]);
+      if (error) newErrors[key] = error;
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
@@ -41,18 +101,18 @@ function AppointmentForm() {
     setErrorMessage("");
 
     if (!validateForm()) {
+      setErrorMessage("Please fix all errors before submitting.");
       setLoading(false);
       return;
     }
 
     try {
-      await axios.post("http://localhost:3001/appointment/create", formData, {
+      await axios.post("http://192.168.3.75:3001/appointment/create", formData, {
         headers: { "Content-Type": "application/json" },
       });
       setSuccessMessage(
         `Appointment for ${formData.firstName} ${formData.lastName} scheduled successfully! Email sent to ${formData.visitorEmail}.`
       );
-      // Reset form after success
       setFormData({
         firstName: "",
         lastName: "",
@@ -60,6 +120,7 @@ function AppointmentForm() {
         allocatedTime: "",
         visitorEmail: "",
       });
+      setErrors({});
     } catch (error) {
       console.error("Error:", error.response?.data || error.message);
       const errorMsg = error.response?.data?.message || "Failed to process request. Please try again.";
@@ -72,7 +133,7 @@ function AppointmentForm() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", background: "white" }}>
       <div style={{ background: "white", padding: "2rem", borderRadius: "15px", boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)", width: "100%", maxWidth: "600px" }}>
-        <h1 style={{ textAlign: "center", color: "#333", marginBottom: "2rem", fontSize: "2rem", background: "linear-gradient(to right, #667eea, #764ba2)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+        <h1 style={{ textAlign: "center", marginBottom: "2rem", fontSize: "2rem", background: "linear-gradient(to right, #667eea, #764ba2)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
           Schedule an Appointment
         </h1>
 
@@ -85,16 +146,32 @@ function AppointmentForm() {
               { label: "Allocated Time", name: "allocatedTime", type: "time" },
               { label: "Visitor Email", name: "visitorEmail", type: "email" },
             ].map(({ label, name, type = "text" }) => (
-              <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#333", width: "40%" }}>{label}</label>
-                <input
-                  type={type}
-                  name={name}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  required
-                  style={{ flex: 1, padding: "12px 15px", border: "2px solid #eee", borderRadius: "8px", fontSize: "1rem", background: "#f8f9fa" }}
-                />
+              <div key={name} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#333", width: "40%" }}>{label}</label>
+                  <input
+                    type={type}
+                    name={name}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    required
+                    min={name === "date" ? new Date().toISOString().split('T')[0] : undefined}
+                    style={{
+                      flex: 1,
+                      padding: "12px 15px",
+                      border: "2px solid #eee",
+                      borderRadius: "8px",
+                      fontSize: "1rem",
+                      background: "#f8f9fa",
+                      borderColor: errors[name] ? "red" : "#eee",
+                    }}
+                  />
+                </div>
+                {errors[name] && (
+                  <span style={{ color: "red", fontSize: "0.8rem", marginLeft: "40%" }}>
+                    {errors[name]}
+                  </span>
+                )}
               </div>
             ))}
           </div>

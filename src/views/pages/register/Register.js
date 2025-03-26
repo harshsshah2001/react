@@ -35,7 +35,7 @@ const Register = () => {
     e.preventDefault();
     try {
       console.log(formData);
-      const response = await fetch('http://localhost:3001/items', {
+      const response = await fetch('http://192.168.3.75:3001/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
