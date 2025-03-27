@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom"; // Added useNavigate
+import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const VisitorForm = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate(); // Added for navigation
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -21,9 +21,9 @@ const VisitorForm = () => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [showPhotoOptions, setShowPhotoOptions] = useState(false); // Toggle photo options UI
-  const fileInputRef = useRef(null); // Ref for file input (gallery)
-  const cameraInputRef = useRef(null); // Ref for camera input
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   useEffect(() => {
     const rawTime = searchParams.get("time") || "";
@@ -45,6 +45,14 @@ const VisitorForm = () => {
       allocatedTime: formattedTime,
       visitorEmail: searchParams.get("email") || "",
     }));
+
+    // Add a class to hide everything except the form
+    document.body.classList.add("hide-except-form");
+
+    // Cleanup: Remove the class when component unmounts
+    return () => {
+      document.body.classList.remove("hide-except-form");
+    };
   }, [searchParams]);
 
   const validateField = (name, value) => {
@@ -112,7 +120,7 @@ const VisitorForm = () => {
     setFormData((prev) => ({ ...prev, photo: file }));
     const error = validateField("photo", file);
     setErrors((prev) => ({ ...prev, photo: error }));
-    setShowPhotoOptions(false); // Hide options after selection
+    setShowPhotoOptions(false);
   };
 
   const validateForm = () => {
@@ -139,6 +147,8 @@ const VisitorForm = () => {
     setLoading(true);
     setSuccessMessage("");
     setErrorMessage("");
+
+   
 
     const formDataToSend = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
@@ -172,7 +182,6 @@ const VisitorForm = () => {
         note: "",
       });
       setErrors({});
-      // Redirect to Thank You page after success
       navigate('/thank-you');
     } catch (error) {
       console.error("Error submitting appointment details:", error);
@@ -184,7 +193,7 @@ const VisitorForm = () => {
   };
 
   const handlePhotoUploadClick = () => {
-    setShowPhotoOptions(true); // Show options when clicking "Choose File"
+    setShowPhotoOptions(true);
   };
 
   const handleChooseFromGallery = () => {
@@ -196,9 +205,43 @@ const VisitorForm = () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", background: "white" }}>
-      <div style={{ background: "white", padding: "2rem", borderRadius: "15px", boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)", width: "100%", maxWidth: "600px" }}>
-        <h1 style={{ textAlign: "center", color: "#333", marginBottom: "2rem", fontSize: "2rem", background: "linear-gradient(to right, #667eea, #764ba2)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+    <div
+      id="visitor-form"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        background: "#fff", // Solid white background
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 1000, // Above hidden content
+      }}
+    >
+      <div
+        style={{
+          background: "white",
+          padding: "2rem",
+          borderRadius: "15px",
+          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+          width: "100%",
+          maxWidth: "600px",
+        }}
+      >
+        <h1
+          style={{
+            textAlign: "center",
+            color: "#333",
+            marginBottom: "2rem",
+            fontSize: "2rem",
+            background: "linear-gradient(to right, #667eea, #764ba2)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
           Schedule an Appointment
         </h1>
 
@@ -322,7 +365,7 @@ const VisitorForm = () => {
                     name="photoFromFile"
                     onChange={handleFileChange}
                     accept="image/*"
-                    style={{ display: "none" }} // Hidden input for gallery
+                    style={{ display: "none" }}
                   />
                   <input
                     type="file"
@@ -330,8 +373,8 @@ const VisitorForm = () => {
                     name="photoFromCamera"
                     onChange={handleFileChange}
                     accept="image/*"
-                    capture="environment" // Rear camera by default
-                    style={{ display: "none" }} // Hidden input for camera
+                    capture="environment"
+                    style={{ display: "none" }}
                   />
                 </div>
               </div>
@@ -378,5 +421,18 @@ const VisitorForm = () => {
     </div>
   );
 };
+
+// Inject CSS to hide everything except the form
+const styleSheet = document.createElement("style");
+styleSheet.type = "text/css";
+styleSheet.innerText = `
+  .hide-except-form > *:not(#visitor-form) {
+    visibility: hidden;
+  }
+  #visitor-form {
+    visibility: visible !important;
+  }
+`;
+document.head.appendChild(styleSheet);
 
 export default VisitorForm;

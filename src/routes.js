@@ -3,7 +3,7 @@ import React from 'react'
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Colors = React.lazy(() => import('./views/theme/colors/Colors'))
 const Typography = React.lazy(() => import('./views/theme/typography/Typography'))
-const  VisitorForm = React.lazy(() => import('./views/theme/colors/VisitorForm'))
+const VisitorForm = React.lazy(() => import('./views/theme/colors/VisitorForm'));
 const  Thankyou = React.lazy(() => import('./views/thankyou/thankyou'))
 
 // Base
@@ -59,7 +59,7 @@ const routes = [
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
   { path: '/theme/colors', name: 'Visitor Appoitment', element: Colors },
   { path: '/theme/colors/VisitorForm', name: 'VisitorForm', element: VisitorForm },
-
+  
   { path: '/theme/typography', name: 'Typography', element: Typography },
   { path: '/thankyou/thankyou', name: 'Thankyou', element: Thankyou },
 

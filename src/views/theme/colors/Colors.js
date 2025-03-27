@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
 import axios from "axios";
 
 function AppointmentForm() {
+  const navigate = useNavigate(); // Hook for navigation
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -11,12 +13,29 @@ function AppointmentForm() {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [message, setMessage] = useState(""); // Unified message state
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  // Disable the rest of the website when the form is active
+  useEffect(() => {
+    document.body.style.overflow = "hidden"; // Prevent scrolling
+    return () => {
+      document.body.style.overflow = "auto"; // Restore scrolling when unmounted
+    };
+  }, []);
+
+  // Check submission status on mount and email change
+  useEffect(() => {
+    const submittedKey = `appointment_submission_${formData.visitorEmail}`;
+    const hasPreviouslySubmitted = localStorage.getItem(submittedKey) === "true";
+    setHasSubmitted(hasPreviouslySubmitted);
+    if (hasPreviouslySubmitted && formData.visitorEmail) {
+      setMessage("You have already scheduled an appointment with this email.");
+    }
+  }, [formData.visitorEmail]);
 
   const validateField = (name, value) => {
     let error = '';
-
     switch (name) {
       case 'firstName':
       case 'lastName':
@@ -35,13 +54,11 @@ function AppointmentForm() {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           selectedDate.setHours(0, 0, 0, 0);
-
           if (selectedDate.getTime() === today.getTime()) {
             const [hours, minutes] = value.split(':').map(Number);
             const now = new Date();
             const currentHours = now.getHours();
             const currentMinutes = now.getMinutes();
-
             if (
               hours < currentHours ||
               (hours === currentHours && minutes <= currentMinutes)
@@ -73,11 +90,8 @@ function AppointmentForm() {
       ...prev,
       [name]: value,
     }));
-
     const error = validateField(name, value);
     setErrors((prev) => ({ ...prev, [name]: error }));
-
-    // Revalidate allocatedTime when date changes
     if (name === 'date' && formData.allocatedTime) {
       const timeError = validateField('allocatedTime', formData.allocatedTime);
       setErrors((prev) => ({ ...prev, allocatedTime: timeError }));
@@ -97,11 +111,16 @@ function AppointmentForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setSuccessMessage("");
-    setErrorMessage("");
+    setMessage("");
+
+    if (hasSubmitted) {
+      setMessage("You have already submitted this form.");
+      setLoading(false);
+      return;
+    }
 
     if (!validateForm()) {
-      setErrorMessage("Please fix all errors before submitting.");
+      setMessage("Please fix all errors before submitting.");
       setLoading(false);
       return;
     }
@@ -110,9 +129,11 @@ function AppointmentForm() {
       await axios.post("http://192.168.3.75:3001/appointment/create", formData, {
         headers: { "Content-Type": "application/json" },
       });
-      setSuccessMessage(
-        `Appointment for ${formData.firstName} ${formData.lastName} scheduled successfully! Email sent to ${formData.visitorEmail}.`
-      );
+      const successMsg = `Appointment for ${formData.firstName} ${formData.lastName} scheduled successfully! Email sent to ${formData.visitorEmail}.`;
+      setMessage(successMsg);
+      const submittedKey = `appointment_submission_${formData.visitorEmail}`;
+      localStorage.setItem(submittedKey, "true");
+      setHasSubmitted(true);
       setFormData({
         firstName: "",
         lastName: "",
@@ -124,19 +145,143 @@ function AppointmentForm() {
     } catch (error) {
       console.error("Error:", error.response?.data || error.message);
       const errorMsg = error.response?.data?.message || "Failed to process request. Please try again.";
-      setErrorMessage(errorMsg);
+      setMessage(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
+  // Render submitted state with Back button
+  if (hasSubmitted) {
+    return (
+      <>
+        {/* Overlay to disable the background without changing its appearance */}
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "transparent", // No visible change to the background
+            zIndex: 999, // Below the form but above everything else
+            pointerEvents: "auto", // Captures all clicks to disable interaction
+          }}
+        />
+        {/* Form container */}
+        <div
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)", // Center the form
+            zIndex: 1000, // Above the overlay
+            background: "white",
+            padding: "2rem",
+            borderRadius: "15px",
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+            width: "100%",
+            maxWidth: "600px",
+          }}
+        >
+          <h1
+            style={{
+              textAlign: "center",
+              marginBottom: "2rem",
+              fontSize: "2rem",
+              background: "linear-gradient(to right, #667eea, #764ba2)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            Form Already Submitted
+          </h1>
+          <p style={{ textAlign: "center", color: "#666" }}>
+            You have already scheduled an appointment with this email. You can only submit this form once.
+          </p>
+          <button
+            onClick={() => navigate("/dashboard")} // Redirect to dashboard
+            style={{
+              display: "block",
+              margin: "1rem auto",
+              padding: "10px 20px",
+              background: "#667eea",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              fontSize: "1rem",
+              fontWeight: "bold",
+            }}
+          >
+            Back
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  // Render form
   return (
-    <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", background: "white" }}>
-      <div style={{ background: "white", padding: "2rem", borderRadius: "15px", boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)", width: "100%", maxWidth: "600px" }}>
-        <h1 style={{ textAlign: "center", marginBottom: "2rem", fontSize: "2rem", background: "linear-gradient(to right, #667eea, #764ba2)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+    <>
+      {/* Overlay to disable the background without changing its appearance */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          background: "transparent", // No visible change to the background
+          zIndex: 999, // Below the form but above everything else
+          pointerEvents: "auto", // Captures all clicks to disable interaction
+        }}
+      />
+      {/* Form container */}
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)", // Center the form
+          zIndex: 1000, // Above the overlay
+          background: "white",
+          padding: "2rem",
+          borderRadius: "15px",
+          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+          width: "100%",
+          maxWidth: "600px",
+        }}
+      >
+        <h1
+          style={{
+            textAlign: "center",
+            marginBottom: "2rem",
+            fontSize: "2rem",
+            background: "linear-gradient(to right, #667eea, #764ba2)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
           Schedule an Appointment
         </h1>
-
+        {message && (
+          <p
+            style={{
+              textAlign: "center",
+              marginTop: "1.5rem",
+              color: message.includes("successfully") ? "#28a745" : "#dc3545",
+              fontWeight: "bold",
+              background: message.includes("successfully") ? "#e6ffe6" : "#ffe6e6",
+              padding: "10px",
+              borderRadius: "5px",
+            }}
+          >
+            {message}
+          </p>
+        )}
         <form onSubmit={handleSubmit}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
             {[
@@ -175,7 +320,6 @@ function AppointmentForm() {
               </div>
             ))}
           </div>
-
           <button
             type="submit"
             disabled={loading}
@@ -197,19 +341,8 @@ function AppointmentForm() {
             {loading ? "Processing..." : "Schedule Appointment"}
           </button>
         </form>
-
-        {successMessage && (
-          <p style={{ textAlign: "center", marginTop: "1.5rem", color: "#28a745", fontWeight: "bold", background: "#e6ffe6", padding: "10px", borderRadius: "5px" }}>
-            {successMessage}
-          </p>
-        )}
-        {errorMessage && (
-          <p style={{ textAlign: "center", marginTop: "1.5rem", color: "#dc3545", fontWeight: "bold", background: "#ffe6e6", padding: "10px", borderRadius: "5px" }}>
-            {errorMessage}
-          </p>
-        )}
       </div>
-    </div>
+    </>
   );
 }
 
