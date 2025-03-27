@@ -13,6 +13,7 @@ const Login = React.lazy(() => import('./views/pages/login/Login'))
 const Register = React.lazy(() => import('./views/pages/register/Register'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
+const ThankYouPage = React.lazy(() => import('./views/thankyou/thankyou')); // Updated path
 
 const App = () => {
   const [message, setMessage] = useState("")
@@ -51,8 +52,8 @@ const App = () => {
       >
         {/* MDBox usage after import */}
 
-          <h1>React + NestJS</h1>
-          <p>{message ? message : "Loading data from NestJS..."}</p>
+          {/* <h1>React + NestJS</h1>
+          <p>{message ? message : "Loading data from NestJS..."}</p> */}
 
 
         <Routes>
@@ -61,6 +62,7 @@ const App = () => {
           <Route exact path="/register" name="Register Page" element={<Register />} />
           <Route exact path="/404" name="Page 404" element={<Page404 />} />
           <Route exact path="/500" name="Page 500" element={<Page500 />} />
+          <Route exact path="/thank-you" name="Thank You Page" element={<ThankYouPage />} /> {/* New route */}
           <Route path="*" name="Home" element={<DefaultLayout />} />
 
         </Routes>

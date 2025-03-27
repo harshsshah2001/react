@@ -4,6 +4,7 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Colors = React.lazy(() => import('./views/theme/colors/Colors'))
 const Typography = React.lazy(() => import('./views/theme/typography/Typography'))
 const  VisitorForm = React.lazy(() => import('./views/theme/colors/VisitorForm'))
+const  Thankyou = React.lazy(() => import('./views/thankyou/thankyou'))
 
 // Base
 const Accordion = React.lazy(() => import('./views/base/accordion/Accordion'))
@@ -60,6 +61,7 @@ const routes = [
   { path: '/theme/colors/VisitorForm', name: 'VisitorForm', element: VisitorForm },
 
   { path: '/theme/typography', name: 'Typography', element: Typography },
+  { path: '/thankyou/thankyou', name: 'Thankyou', element: Thankyou },
 
   { path: '/base', name: 'Base', element: Cards, exact: true },
   { path: '/base/accordion', name: 'Accordion', element: Accordion },

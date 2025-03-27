@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom"; // Added useNavigate
 import axios from "axios";
 
 const VisitorForm = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate(); // Added for navigation
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -171,6 +172,8 @@ const VisitorForm = () => {
         note: "",
       });
       setErrors({});
+      // Redirect to Thank You page after success
+      navigate('/thank-you');
     } catch (error) {
       console.error("Error submitting appointment details:", error);
       const errorMsg = error.response?.data?.message || "Failed to process request. Please try again.";
@@ -262,7 +265,7 @@ const VisitorForm = () => {
             {/* Custom Photo Upload Section */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#333", width: "40%" }}>Photo</label>
+                <label style={{ fontWeight: "bold", fontSize: "1rem", color: "#333", width: "40%" }}>PhotoMonitor Photo</label>
                 <div style={{ flex: 1 }}>
                   <button
                     type="button"
